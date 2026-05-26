@@ -1,0 +1,180 @@
+name: bootstrap-coolify
+
+# Provisions a Postgres 16 database and an application in Coolify the
+# first time a repo cloned from this template is pushed to main. Writes
+# .coolify/app.json so subsequent runs skip the bootstrap.
+#
+# Required GitHub org secrets (Settings → Secrets → Actions):
+#   COOLIFY_BASE_URL          e.g. https://coolify.proto-beta.fr
+#   COOLIFY_TOKEN_WRITE       write-scoped Coolify API token
+#                             (a separate read-scoped token lives only
+#                             inside coolify-logs-proxy)
+#   COOLIFY_PROJECT_UUID      uuid of the "protos" project
+#   COOLIFY_SERVER_UUID       uuid of the "localhost" server
+#   COOLIFY_GITHUB_APP_UUID   uuid of the connected GitHub App source
+#   COOLIFY_DOMAIN_SUFFIX     e.g. proto-beta.fr (no leading dot)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    if: github.repository != 'betagouv-experimentations/template-proto'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if already bootstrapped
+        id: gate
+        run: |
+          if [ -f .coolify/app.json ]; then
+            echo "Already bootstrapped — exiting."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute repo + domain
+        if: steps.gate.outputs.skip != 'true'
+        id: meta
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          DOMAIN="https://${REPO_NAME}.${{ secrets.COOLIFY_DOMAIN_SUFFIX }}"
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+
+      - name: Create Postgres 16 database
+        if: steps.gate.outputs.skip != 'true'
+        id: db
+        env:
+          BASE: ${{ secrets.COOLIFY_BASE_URL }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN_WRITE }}
+        run: |
+          set -e
+          RES=$(curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "$BASE/api/v1/databases/postgresql" \
+            -d "{
+              \"name\": \"db-${{ steps.meta.outputs.repo_name }}\",
+              \"image\": \"postgres:16-alpine\",
+              \"project_uuid\": \"${{ secrets.COOLIFY_PROJECT_UUID }}\",
+              \"server_uuid\": \"${{ secrets.COOLIFY_SERVER_UUID }}\",
+              \"environment_name\": \"production\",
+              \"is_public\": false
+            }")
+          echo "Create response shape: $(echo "$RES" | jq -r 'keys | join(",")')"
+          DB_UUID=$(echo "$RES" | jq -r '.uuid')
+          DB_URL=$(echo "$RES" | jq -r '.internal_db_url // empty')
+          if [ "$DB_UUID" = "null" ] || [ -z "$DB_UUID" ]; then
+            echo "Failed to extract db uuid"; exit 1
+          fi
+          if [ -z "$DB_URL" ]; then
+            echo "Failed to extract internal_db_url from create response"; exit 1
+          fi
+          echo "DATABASE_URL host (redacted): $(echo "$DB_URL" | sed 's/:\/\/[^:]*:[^@]*@/:\/\/REDACTED@/')"
+          echo "db_uuid=$DB_UUID" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$DB_URL"
+          echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Start database
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          BASE: ${{ secrets.COOLIFY_BASE_URL }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN_WRITE }}
+          DB_UUID: ${{ steps.db.outputs.db_uuid }}
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer $TOKEN" \
+            "$BASE/api/v1/databases/$DB_UUID/start"
+          echo "Waiting 25s for the database to become healthy..."
+          sleep 25
+
+      - name: Create application
+        if: steps.gate.outputs.skip != 'true'
+        id: app
+        env:
+          BASE: ${{ secrets.COOLIFY_BASE_URL }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN_WRITE }}
+        run: |
+          set -e
+          RES=$(curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "$BASE/api/v1/applications/private-github-app" \
+            -d "{
+              \"name\": \"${{ steps.meta.outputs.repo_name }}\",
+              \"project_uuid\": \"${{ secrets.COOLIFY_PROJECT_UUID }}\",
+              \"server_uuid\": \"${{ secrets.COOLIFY_SERVER_UUID }}\",
+              \"environment_name\": \"production\",
+              \"github_app_uuid\": \"${{ secrets.COOLIFY_GITHUB_APP_UUID }}\",
+              \"git_repository\": \"${{ github.repository }}\",
+              \"git_branch\": \"main\",
+              \"build_pack\": \"dockerfile\",
+              \"ports_exposes\": \"3000\",
+              \"domains\": \"${{ steps.meta.outputs.domain }}\"
+            }")
+          echo "Create app response: $RES"
+          APP_UUID=$(echo "$RES" | jq -r '.uuid')
+          if [ "$APP_UUID" = "null" ] || [ -z "$APP_UUID" ]; then
+            echo "Failed to extract app uuid"; exit 1
+          fi
+          echo "app_uuid=$APP_UUID" >> "$GITHUB_OUTPUT"
+
+      - name: Set DATABASE_URL on application
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          BASE: ${{ secrets.COOLIFY_BASE_URL }}
+          TOKEN: ${{ secrets.COOLIFY_TOKEN_WRITE }}
+          APP_UUID: ${{ steps.app.outputs.app_uuid }}
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "$BASE/api/v1/applications/$APP_UUID/envs" \
+            -d "{
+              \"key\": \"DATABASE_URL\",
+              \"value\": \"$DB_URL\",
+              \"is_preview\": false
+            }"
+
+      - name: Personalize README + persist .coolify/app.json + push
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          APP_UUID: ${{ steps.app.outputs.app_uuid }}
+          DB_UUID: ${{ steps.db.outputs.db_uuid }}
+          DOMAIN: ${{ steps.meta.outputs.domain }}
+          REPO_NAME: ${{ steps.meta.outputs.repo_name }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          REPO_CLONE_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          mkdir -p .coolify
+          cat > .coolify/app.json <<EOF
+          {
+            "app_uuid": "$APP_UUID",
+            "database_uuid": "$DB_UUID",
+            "domain": "$DOMAIN",
+            "bootstrap_commit": "${{ github.sha }}"
+          }
+          EOF
+
+          if [ -f README.md ]; then
+            sed -i \
+              -e '/<!-- TEMPLATE_ONLY_START -->/,/<!-- TEMPLATE_ONLY_END -->/d' \
+              -e "s|{{REPO_NAME}}|$REPO_NAME|g" \
+              -e "s|{{REPO_FULL_NAME}}|$REPO_FULL_NAME|g" \
+              -e "s|{{REPO_CLONE_URL}}|$REPO_CLONE_URL|g" \
+              -e "s|{{DEPLOY_URL}}|$DOMAIN|g" \
+              README.md
+          fi
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add .coolify/app.json README.md
+          git commit -m "chore: bootstrap Coolify resources and personalize README"
+          git push
