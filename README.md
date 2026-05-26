@@ -1,6 +1,6 @@
 # {{REPO_NAME}}
 
-> Prototype beta.gouv.fr propulsé par Claude Code et le DSFR.
+> Prototype beta.gouv.fr propulsé par Claude Code et le DSFR
 
 <!-- TEMPLATE_ONLY_START -->
 
