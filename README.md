@@ -1,35 +1,11 @@
-# {{REPO_NAME}}
+# eval-metier-rag
 
 > Prototype beta.gouv.fr propulsé par Claude Code et le DSFR
 
-<!-- TEMPLATE_ONLY_START -->
-
-> ⚠️ **Tu es sur le template, pas sur ton projet.**
->
-> Pour créer ton propre prototype, suis cette section. Ton nouveau repo aura un README personnalisé qui prendra le relais.
-
-## 1. Créer ton repo à partir du template
-
-1. Clique sur **« Use this template »** (bouton vert en haut à droite de cette page) → **« Create a new repository »**.
-2. Dans le formulaire :
-   - **Owner** : choisis **`betagouv-experimentations`** (pas ton compte perso, sinon le déploiement automatique ne se fera pas).
-   - **Repository name** : choisis un nom court, en minuscules, sans accents (ex : `partenariats-ademe`, `simulateur-rsa`). Ce nom deviendra l'URL publique de ton service : `https://<ton-nom>.coolify.incubateur.net`.
-   - **Public** (par défaut beta.gouv).
-3. Clique **« Create repository »**.
-4. Patiente 30 à 60 secondes : un workflow GitHub Actions provisionne automatiquement la base de données et le déploiement. Tu peux suivre dans l'onglet **Actions** de ton nouveau repo.
-5. Une fois fini, **rouvre le README de TON repo** (pas celui-ci) — il sera mis à jour avec les bonnes URLs et la suite des instructions.
-
-Si tu n'as pas la permission de choisir `betagouv-experimentations` comme Owner, contacte ton coach beta pour qu'il t'ajoute à l'organisation.
-
----
-
-(La suite ci-dessous décrit le flow PM **après** bootstrap — affichée ici à titre informatif.)
-
-<!-- TEMPLATE_ONLY_END -->
 
 ## 🚀 Démarrer
 
-Tu as ton repo : **{{REPO_FULL_NAME}}**. Voici la suite, en 5 minutes.
+Tu as ton repo : **betagouv-experimentations/eval-metier-rag**. Voici la suite, en 5 minutes.
 
 ### 1. Installer agent-vm
 
@@ -40,8 +16,8 @@ agent-vm est l'environnement isolé dans lequel Claude Code tourne. Suis les ins
 Dans un terminal :
 
 ```bash
-git clone {{REPO_CLONE_URL}}
-cd {{REPO_NAME}}
+git clone https://github.com/betagouv-experimentations/eval-metier-rag.git
+cd eval-metier-rag
 agent-vm --memory 16 --disk 40 --cpus 6 claude
 ```
 
@@ -111,7 +87,7 @@ Quand ton proto te plaît :
 
 Claude lance les tests, commit, push, et suit le déploiement automatique. Ton service sera en ligne sur :
 
-**{{DEPLOY_URL}}**
+**https://eval-metier-rag.coolify.incubateur.net**
 
 en environ 2 à 3 minutes. Claude te tient au courant pendant le build et te diagnostique tout échec éventuel.
 
