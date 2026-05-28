@@ -7,6 +7,8 @@ import { formatDateFr } from "@/lib/utils";
 import type { Campaign } from "@/db/schema";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Campagnes — Éval Métier RAG",
 };
