@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { fr } from "@codegouvfr/react-dsfr";
 
 export const metadata: Metadata = {
-  title: "Mentions légales",
+  title: "Mentions légales — Éval Métier RAG",
 };
 
 export default function MentionsLegalesPage(): React.ReactElement {

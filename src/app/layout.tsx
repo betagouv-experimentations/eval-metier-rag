@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DsfrProvider, StartDsfrOnHydration } from "@/lib/dsfr/DsfrProvider";
 import { getHtmlAttributes } from "@/lib/dsfr/getHtmlAttributes";
+import { Header } from "@codegouvfr/react-dsfr/Header";
+import { Footer } from "@codegouvfr/react-dsfr/Footer";
+import { headerFooterDisplayItem, Display } from "@codegouvfr/react-dsfr/Display";
 
 export const metadata: Metadata = {
-  title: "Prototype beta.gouv",
-  description: "Prototype de service public numérique français",
+  title: "Éval Métier RAG",
+  description: "Outil d'évaluation humaine de réponses générées par des systèmes RAG",
 };
 
 export default function RootLayout({
@@ -20,76 +23,64 @@ export default function RootLayout({
       </head>
       <body>
         <DsfrProvider lang={lang}>
-          <a className="fr-skiplinks" href="#content">
+          <a className="fr-skiplink" href="#content">
             Aller au contenu
           </a>
-          <header role="banner" className="fr-header">
-            <div className="fr-header__body">
-              <div className="fr-container">
-                <div className="fr-header__body-row">
-                  <div className="fr-header__brand fr-enlarge-link">
-                    <div className="fr-header__brand-top">
-                      <div className="fr-header__logo">
-                        <p className="fr-logo">
-                          République
-                          <br />
-                          Française
-                        </p>
-                      </div>
-                    </div>
-                    <div className="fr-header__service">
-                      <Link href="/" title="Accueil">
-                        <p className="fr-header__service-title">Prototype beta.gouv</p>
-                      </Link>
-                      <p className="fr-header__service-tagline">
-                        Service public numérique en construction
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </header>
-          <main id="content" role="main">
+          <Header
+            brandTop={
+              <>
+                RÉPUBLIQUE
+                <br />
+                FRANÇAISE
+              </>
+            }
+            homeLinkProps={{ href: "/", title: "Accueil — Éval Métier RAG" }}
+            serviceTitle="Éval Métier RAG"
+            serviceTagline="Évaluation humaine de systèmes RAG"
+            quickAccessItems={[
+              headerFooterDisplayItem,
+              {
+                iconId: "fr-icon-add-circle-line",
+                text: "Nouvelle campagne",
+                linkProps: { href: "/campagnes/nouvelle" },
+              },
+            ]}
+            navigation={[
+              { text: "Accueil", linkProps: { href: "/" } },
+              { text: "Campagnes", linkProps: { href: "/campagnes" } },
+            ]}
+          />
+          <main id="content" role="main" tabIndex={-1}>
             {children}
           </main>
-          <footer className="fr-footer" role="contentinfo">
-            <div className="fr-container">
-              <div className="fr-footer__body">
-                <div className="fr-footer__brand fr-enlarge-link">
-                  <p className="fr-logo">
-                    République
-                    <br />
-                    Française
-                  </p>
-                </div>
-                <div className="fr-footer__content">
-                  <p className="fr-footer__content-desc">
-                    Prototype développé dans le cadre de beta.gouv.fr
-                  </p>
-                </div>
-              </div>
-              <div className="fr-footer__bottom">
-                <ul className="fr-footer__bottom-list">
-                  <li className="fr-footer__bottom-item">
-                    <Link className="fr-footer__bottom-link" href="/mentions-legales">
-                      Mentions légales
-                    </Link>
-                  </li>
-                  <li className="fr-footer__bottom-item">
-                    <Link className="fr-footer__bottom-link" href="/donnees-personnelles">
-                      Données personnelles
-                    </Link>
-                  </li>
-                  <li className="fr-footer__bottom-item">
-                    <Link className="fr-footer__bottom-link" href="/accessibilite">
-                      Accessibilité : non conforme
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </footer>
+          <Footer
+            accessibility="partially compliant"
+            contentDescription="Prototype beta.gouv.fr — Évaluation humaine de réponses RAG"
+            brandTop={
+              <>
+                RÉPUBLIQUE
+                <br />
+                FRANÇAISE
+              </>
+            }
+            homeLinkProps={{ href: "/", title: "Accueil — Éval Métier RAG" }}
+            bottomItems={[
+              headerFooterDisplayItem,
+              {
+                text: "Mentions légales",
+                linkProps: { href: "/mentions-legales" },
+              },
+              {
+                text: "Données personnelles",
+                linkProps: { href: "/donnees-personnelles" },
+              },
+              {
+                text: "Accessibilité : non conforme",
+                linkProps: { href: "/accessibilite" },
+              },
+            ]}
+          />
+          <Display />
           <StartDsfrOnHydration />
         </DsfrProvider>
       </body>
